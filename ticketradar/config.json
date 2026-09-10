@@ -1,0 +1,62 @@
+{
+  "event": {
+    "artist": "Electric Callboy",
+    "tour": "Tanzneid World Tour",
+    "city": "Dortmund",
+    "venue": "Westfalenhalle",
+    "date": "2027-02-27",
+    "eventim_event_id": "21681879",
+    "eventim_url": "https://www.eventim.de/event/electric-callboy-tanzneid-world-tour-westfalenhalle-21681879/",
+    "original_prices_eur": { "innenraum": 99.99, "mittelrang": 95.60, "oberrang": 90.10 }
+  },
+  "wanted": {
+    "tickets_needed": 2,
+    "max_price_per_ticket": {
+      "innenraum": 130,
+      "sitzplatz_unten": 125,
+      "oberrang": 0
+    },
+    "target_price_per_ticket": { "innenraum": 120, "sitzplatz_unten": 115 },
+    "notify_unknown_price": true
+  },
+  "keywords": {
+    "must_contain_any": ["electric callboy", "electric call boy", "callboy", "eskimo callboy"],
+    "must_contain_any_of_event": ["dortmund", "westfalenhalle", "westfalenhallen", "27.02", "27.2.", "27. februar", "27 februar", "27.02.27", "27.02.2027"],
+    "exclude_wanted_ads": ["suche", "gesucht", "gesuch", "kaufe ", "kaufgesuch", "wer verkauft", "biete tausch"],
+    "exclude_other_cities": ["hamburg", "berlin", "münchen", "muenchen", "köln", "koeln", "frankfurt", "stuttgart", "hannover", "leipzig", "wien", "zürich", "zuerich", "oberhausen", "düsseldorf", "duesseldorf", "essen premiere", "film-premiere", "filmpremiere"]
+  },
+  "sources": {
+    "kleinanzeigen": {
+      "enabled": true,
+      "urls": [
+        "https://www.kleinanzeigen.de/s-eintrittskarten-tickets/electric-callboy-dortmund/k0c231",
+        "https://www.kleinanzeigen.de/s-eintrittskarten-tickets/electric-callboy-westfalenhalle/k0c231",
+        "https://www.kleinanzeigen.de/s-electric-callboy/k0",
+        "https://www.kleinanzeigen.de/s-eintrittskarten-tickets/callboy-dortmund/k0c231"
+      ]
+    },
+    "ebay": {
+      "enabled": true,
+      "queries": ["electric callboy dortmund", "electric callboy westfalenhalle", "electric callboy 27.02.2027", "electric callboy tanzneid dortmund"]
+    },
+    "page_watch": {
+      "enabled": true,
+      "pages": [
+        { "name": "Eventim fanSALE", "url": "https://www.fansale.de/fansale/tickets/rock-pop/electric-callboy/", "must_contain": ["dortmund"] },
+        { "name": "TicketSwap", "url": "https://www.ticketswap.de/search?q=electric%20callboy", "must_contain": ["dortmund"] },
+        { "name": "Tixel", "url": "https://tixel.com/de/search?q=electric%20callboy", "must_contain": ["dortmund"] }
+      ]
+    }
+  },
+  "notify": {
+    "ntfy_topic": "ecb-dortmund-2027-08582309",
+    "ntfy_server": "https://ntfy.sh",
+    "webhook_url": "",
+    "message_to_seller": "Hallo! Ich habe großes Interesse an den {count} Tickets für Electric Callboy am 27.02.2027 in der Westfalenhalle Dortmund. Ich würde sie gern sofort zum Preis von {price} übernehmen und kann direkt per PayPal (Käuferschutz) zahlen bzw. bei Bedarf auch in Dortmund/Umgebung abholen. Sind die Tickets noch verfügbar? Viele Grüße, Mike"
+  },
+  "http": {
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "timeout_seconds": 25,
+    "delay_between_requests_seconds": 2.0
+  }
+}

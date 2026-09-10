@@ -1,0 +1,4 @@
+state/radar.log
+state/cron.log
+state/launchd.*
+__pycache__/
