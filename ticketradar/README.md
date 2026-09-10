@@ -31,11 +31,15 @@ werden vom Egress-Proxy mit 403 abgewiesen). Deshalb gibt es zwei Betriebsarten:
 
 1. **Lokal (empfohlen, Echtzeit):** Dieses Skript läuft auf deinem Mac/PC alle 10 Minuten
    und liest die Portale direkt. Push kommt per ntfy-App.
-2. **Cloud-Zeitplan (Fallback, schon aktiv):** Eine Claude-Routine läuft stündlich (6–23 Uhr),
-   sucht über die Websuche nach neuen Inseraten (Suchindex, also mit Verzögerung) und schickt
-   bei Treffern eine Push-/E-Mail-Benachrichtigung über Claude. Sobald du in der Umgebung
-   die Netzwerkrichtlinie auf „unrestricted“ stellst (claude.ai/code → Environment →
-   Network access), führt die Routine automatisch das Skript aus und arbeitet in Echtzeit.
+2. **Cloud-Routine (Fallback, schon aktiv):** Eine Claude-Routine läuft stündlich (6–23 Uhr Berlin),
+   sucht über die Websuche nach neuen Inseraten (Suchindex, also mit Verzögerung) und schickt bei
+   Treffern eine Push-/E-Mail-Benachrichtigung über Claude. Ihr Gedächtnis (welche Inserate schon
+   gemeldet wurden) liegt in der Datenbank der Übersichtsseite, nicht in Git. Sobald du in der Umgebung
+   die Netzwerkrichtlinie auf „unrestricted“ stellst (claude.ai/code → Environment → Network access),
+   führt die Routine automatisch das Skript aus und arbeitet in Echtzeit.
+
+**Übersichtsseite (alle Treffer live, mit Kopiertext für den Verkäufer):**
+https://claude.ai/code/artifact/659fda24-43ab-4fed-bd4c-495beca0298a
 
 ## Einrichtung lokal (5 Minuten)
 
@@ -115,7 +119,7 @@ Tippen auf die Nachricht öffnet das Inserat direkt. Nachricht kopieren, bei Kle
 | `config.json` | Suchkriterien, Preislimits, Quellen, Push-Topic, Verkäufer-Nachricht |
 | `state/seen.json` | bereits gemeldete Angebote (damit nichts doppelt kommt) |
 | `state/radar.log` | Protokoll |
-| `ROUTINE.md` | Prompt der stündlichen Cloud-Routine |
+| `ROUTINE.md` | Prompt und Datenmodell der stündlichen Cloud-Routine |
 | `de.mikeschneider.ticketradar.plist` | launchd-Vorlage für den Mac |
 
 ## Bekannte Grenzen
