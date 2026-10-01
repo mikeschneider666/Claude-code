@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $Branch = "claude/electric-call-boy-ticket-radar-hze1ul"
 $Zip = "https://github.com/mikeschneider666/Claude-code/archive/refs/heads/$Branch.zip"
 $Dir = Join-Path $env:USERPROFILE "Ticketradar"
-$IntervalMinutes = 10   # Suchintervall; höher setzen, wenn seltener gesucht werden soll
+$IntervalMinutes = 15   # Suchintervall in Minuten
 
 function Refresh-Path {
   $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")

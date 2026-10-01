@@ -38,7 +38,7 @@ der Netzwerkrichtlinie (Stand 01.10.2026):
 
 Deshalb zwei Betriebsarten, die sich ergänzen:
 
-1. **Lokal (empfohlen, Echtzeit, alle Portale):** Dieses Skript läuft auf deinem Mac/PC alle 10 Minuten
+1. **Lokal (empfohlen, Echtzeit, alle Portale):** Dieses Skript läuft auf deinem Mac/PC alle 15 Minuten
    und liest die Portale direkt. Push kommt per ntfy-App.
 2. **Cloud-Routine (läuft schon):** Stündlich (6–23 Uhr) prüft Claude eBay und TicketSwap direkt über dieses
    Skript und sucht für Kleinanzeigen über die Websuche (Suchindex, mit Verzögerung). Bei Treffern kommt
@@ -61,7 +61,7 @@ curl -fsSL https://raw.githubusercontent.com/mikeschneider666/Claude-code/refs/h
 
 Der Installer lädt das Radar in den Ordner `Ticketradar` in deinem Benutzerverzeichnis, installiert Python
 (nur Windows, über winget) und die Abhängigkeiten, schickt einen Test-Push, macht einen Suchlauf und richtet
-den Zehn-Minuten-Takt ein. Vorher die ntfy-App installieren und das Topic abonnieren (siehe unten).
+den 15-Minuten-Takt ein. Vorher die ntfy-App installieren und das Topic abonnieren (siehe unten).
 Erneutes Ausführen aktualisiert das Radar und behält die bereits gemeldeten Angebote.
 
 ## Einrichtung lokal von Hand (5 Minuten)
@@ -82,7 +82,7 @@ python3 ticketradar.py --dry-run --print   # zeigt alle aktuellen Inserate mit B
 python3 ticketradar.py                  # scharfer Lauf: Push bei neuen Treffern
 ```
 
-### 3. Automatisch alle 10 Minuten
+### 3. Automatisch alle 15 Minuten
 
 **Mac (launchd):**
 ```bash
@@ -94,13 +94,13 @@ launchctl load ~/Library/LaunchAgents/de.mikeschneider.ticketradar.plist
 **Linux / Mac (cron):**
 ```bash
 crontab -e
-*/10 * * * * cd /PFAD/ZU/Claude-code/ticketradar && /usr/bin/python3 ticketradar.py >> state/cron.log 2>&1
+*/15 * * * * cd /PFAD/ZU/Claude-code/ticketradar && /usr/bin/python3 ticketradar.py >> state/cron.log 2>&1
 ```
 
 **Windows (PowerShell als Admin):**
 ```powershell
 $a = New-ScheduledTaskAction -Execute "python" -Argument "ticketradar.py" -WorkingDirectory "C:\Pfad\zu\Claude-code\ticketradar"
-$t = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 10)
+$t = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)
 Register-ScheduledTask -TaskName "Ticketradar" -Action $a -Trigger $t
 ```
 
