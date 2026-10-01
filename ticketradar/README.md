@@ -25,18 +25,24 @@ Bewertung in der Push-Nachricht: `TOP` (≤ Zielpreis) · `OK` (≤ Limit) · `V
 
 ## Warum ein Skript auf deinem Rechner und nicht nur in der Cloud?
 
-Die Cloud-Umgebung von Claude Code darf per Netzwerkrichtlinie **keine** Verbindung zu
-kleinanzeigen.de, ebay.de, fansale.de, ticketswap.de oder tixel.com aufbauen (alle Anfragen
-werden vom Egress-Proxy mit 403 abgewiesen). Deshalb gibt es zwei Betriebsarten:
+Aus der Claude-Cloud (Rechenzentrums-IP) erreichen wir nur einen Teil der Portale, auch nach Freigabe
+der Netzwerkrichtlinie (Stand 01.10.2026):
 
-1. **Lokal (empfohlen, Echtzeit):** Dieses Skript läuft auf deinem Mac/PC alle 10 Minuten
+| Portal | aus der Cloud | von deinem Rechner |
+|---|---|---|
+| eBay | ✅ funktioniert (nach Startseiten-Aufruf) | ✅ |
+| TicketSwap | ✅ erreichbar (Best-Effort) | ✅ |
+| Kleinanzeigen | ❌ „IP-Bereich vorübergehend gesperrt“ für alle Such-/Inseratsseiten | ✅ |
+| Eventim fanSALE | ❌ Akamai „Access Denied“ | ✅ (Best-Effort) |
+| Tixel | ❌ keine stabile Such-URL, deaktiviert | – |
+
+Deshalb zwei Betriebsarten, die sich ergänzen:
+
+1. **Lokal (empfohlen, Echtzeit, alle Portale):** Dieses Skript läuft auf deinem Mac/PC alle 10 Minuten
    und liest die Portale direkt. Push kommt per ntfy-App.
-2. **Cloud-Routine (Fallback, schon aktiv):** Eine Claude-Routine läuft stündlich (6–23 Uhr Berlin),
-   sucht über die Websuche nach neuen Inseraten (Suchindex, also mit Verzögerung) und schickt bei
-   Treffern eine Push-/E-Mail-Benachrichtigung über Claude. Ihr Gedächtnis (welche Inserate schon
-   gemeldet wurden) liegt in der Datenbank der Übersichtsseite, nicht in Git. Sobald du in der Umgebung
-   die Netzwerkrichtlinie auf „unrestricted“ stellst (claude.ai/code → Environment → Network access),
-   führt die Routine automatisch das Skript aus und arbeitet in Echtzeit.
+2. **Cloud-Routine (läuft schon):** Stündlich (6–23 Uhr) prüft Claude eBay und TicketSwap direkt über dieses
+   Skript und sucht für Kleinanzeigen über die Websuche (Suchindex, mit Verzögerung). Bei Treffern kommt
+   Push und E-Mail über Claude. Gedächtnis ist die Datenbank der Übersichtsseite.
 
 **Übersichtsseite (alle Treffer live, mit Kopiertext für den Verkäufer):**
 https://claude.ai/code/artifact/659fda24-43ab-4fed-bd4c-495beca0298a
@@ -127,6 +133,6 @@ Tippen auf die Nachricht öffnet das Inserat direkt. Nachricht kopieren, bei Kle
   die Live-Seiten (aus der Cloud nicht erreichbar). Wenn `--dry-run --print` lokal **0 Inserate**
   zeigt, obwohl es welche gibt, hat sich das Seitenlayout geändert → Selektoren in
   `scrape_kleinanzeigen` / `scrape_ebay` anpassen (oder mir Bescheid geben).
-* fanSALE, TicketSwap und Tixel laden viel per JavaScript; dort meldet das Radar nur, **dass** sich
+* fanSALE und TicketSwap laden viel per JavaScript; dort meldet das Radar nur, **dass** sich
   bei Dortmund-Angeboten/Preisen etwas geändert hat (Best-Effort), nicht jedes einzelne Ticket.
 * Preis pro Ticket wird geschätzt: Steht „2 Tickets … 240 €“, wird 120 €/Ticket angenommen.

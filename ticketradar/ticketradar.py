@@ -30,7 +30,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit
 
 try:
     import requests
@@ -164,10 +164,31 @@ class Http:
         self.delay = cfg["http"]["delay_between_requests_seconds"]
         self.blocked = 0
         self.ok = 0
+        self.warmed: set[str] = set()
+        self.blocked_hosts: set[str] = set()
+        self.ok_hosts: set[str] = set()
 
-    def get(self, url: str) -> str:
+    def _warm(self, url: str) -> None:
+        """Startseite des Hosts einmal aufrufen (Cookies) – eBay liefert sonst 403."""
+        host = urlsplit(url).netloc
+        if host in self.warmed:
+            return
+        self.warmed.add(host)
         try:
-            r = self.s.get(url, timeout=self.timeout)
+            self.s.get(f"https://{host}/", timeout=self.timeout)
+            time.sleep(self.delay)
+        except requests.exceptions.RequestException:
+            pass
+
+    def get(self, url: str, _retry: bool = True) -> str:
+        host = urlsplit(url).netloc
+        self._warm(url)
+        try:
+            r = self.s.get(url, timeout=self.timeout, headers={"Referer": f"https://{host}/"})
+            if r.status_code == 403 and _retry and "ebay." in host:
+                # eBay akzeptiert oft erst den zweiten Aufruf mit gesetzten Cookies
+                time.sleep(self.delay + 1)
+                return self.get(url, _retry=False)
         except requests.exceptions.ProxyError as e:
             self.blocked += 1
             raise Blocked(f"Proxy/Egress blockiert: {url} ({e.__class__.__name__})")
@@ -177,9 +198,16 @@ class Http:
             time.sleep(self.delay)
         if r.status_code in (403, 429, 503):
             self.blocked += 1
-            raise Blocked(f"HTTP {r.status_code} (Bot-Schutz/Sperre?) für {url}")
+            self.blocked_hosts.add(host)
+            why = "Bot-Schutz/Sperre"
+            if "IP-Bereich" in r.text and "gesperrt" in r.text:
+                why = "Kleinanzeigen sperrt diesen IP-Bereich (Rechenzentrum) – nur von einem Privatanschluss nutzbar"
+            elif "Access Denied" in r.text:
+                why = "Zugriff vom CDN verweigert (Akamai)"
+            raise Blocked(f"HTTP {r.status_code}: {why} – {url}")
         r.raise_for_status()
         self.ok += 1
+        self.ok_hosts.add(host)
         return r.text
 
 
@@ -239,93 +267,79 @@ def scrape_kleinanzeigen(http: Http, cfg: dict) -> list[dict]:
     return items
 
 
+EBAY_NOISE = re.compile(r"\s*Wird in neuem Fenster oder Tab geöffnet.*$", re.I)
+
+
+def _ebay_item(link: str, title: str, price_txt: str, all_txt: str) -> dict | None:
+    m = re.search(r"/itm/(?:[^/]+/)?(\d{9,})", link)
+    if not m:
+        return None
+    title = EBAY_NOISE.sub("", title).strip()
+    if not title or title.lower().startswith("shop on ebay"):
+        return None
+    lower = all_txt.lower()
+    if "gebot" in lower or "auktion" in lower:
+        kind = "Auktion"
+    elif "sofort-kaufen" in lower or "sofort kaufen" in lower or "sofort" in lower:
+        kind = "Sofort-Kaufen"
+    else:
+        kind = "eBay (Typ unklar)"
+    return {
+        "id": item_id("ebay", m.group(1)),
+        "source": "eBay",
+        "title": title,
+        "url": f"https://www.ebay.de/itm/{m.group(1)}",
+        "price_text": price_txt,
+        "price": parse_price(price_txt),
+        "negotiable": "preisvorschlag" in lower,
+        "location": "",
+        "text": f"{title} {all_txt}",
+        "is_wanted": False,
+        "kind": kind,
+    }
+
+
 def scrape_ebay(http: Http, cfg: dict) -> list[dict]:
-    """eBay-Suche: erst RSS (robust), sonst HTML. Unterscheidet Auktion / Sofort-Kaufen."""
+    """eBay-Suche: HTML (nach Startseiten-Aufruf), sonst RSS. Unterscheidet Auktion / Sofort-Kaufen."""
     items: list[dict] = []
     for q in cfg["sources"]["ebay"]["queries"]:
         base = f"https://www.ebay.de/sch/i.html?_nkw={quote_plus(q)}&_sop=10&LH_PrefLoc=1"
-        got = False
-        # 1) RSS
+        got = 0
+        if BeautifulSoup is not None:
+            try:
+                html = http.get(base)
+                soup = BeautifulSoup(html, "html.parser")
+                cards = soup.select("li.s-card, li.s-item, li[data-listingid], div.s-item")
+                for c in cards:
+                    a = c.select_one("a.s-item__link, a.su-link, a[href*='/itm/']")
+                    if not a:
+                        continue
+                    title_el = c.select_one(".s-item__title, .s-card__title, [role=heading]")
+                    title = title_el.get_text(" ", strip=True) if title_el else a.get_text(" ", strip=True)
+                    price_el = c.select_one(".s-item__price, .s-card__price")
+                    price_txt = price_el.get_text(" ", strip=True) if price_el else price_text_of(c.get_text(" ", strip=True))
+                    it = _ebay_item(a.get("href", ""), title, price_txt, c.get_text(" ", strip=True))
+                    if it:
+                        items.append(it)
+                        got += 1
+                log(f"ebay: {got} Inserate (HTML) für '{q}'")
+                continue
+            except Blocked as e:
+                log(f"ebay html: {e}")
         try:
             xml = http.get(base + "&_rss=1")
             root = ET.fromstring(xml.encode("utf-8", "ignore"))
-            for it in root.iter("item"):
-                link = (it.findtext("link") or "").strip()
-                title = (it.findtext("title") or "").strip()
-                desc = re.sub(r"<[^>]+>", " ", it.findtext("description") or "")
-                m = re.search(r"/itm/(?:[^/]+/)?(\d{9,})", link)
-                raw = m.group(1) if m else hashlib.md5(link.encode()).hexdigest()[:12]
-                lower = (title + " " + desc).lower()
-                kind = "Auktion" if ("gebot" in lower or "auktion" in lower) else ("Sofort-Kaufen" if "sofort" in lower else "eBay (Typ unklar)")
-                items.append(
-                    {
-                        "id": item_id("ebay", raw),
-                        "source": "eBay",
-                        "title": title,
-                        "url": link.split("?")[0],
-                        "price_text": price_text_of(desc, title),
-                        "price": parse_price(desc) or parse_price(title),
-                        "negotiable": "preisvorschlag" in lower,
-                        "location": "",
-                        "text": f"{title} {desc}",
-                        "is_wanted": False,
-                        "kind": kind,
-                    }
-                )
-                got = True
+            for it_ in root.iter("item"):
+                link = (it_.findtext("link") or "").strip()
+                title = (it_.findtext("title") or "").strip()
+                desc = re.sub(r"<[^>]+>", " ", it_.findtext("description") or "")
+                it = _ebay_item(link, title, price_text_of(desc, title), f"{title} {desc}")
+                if it:
+                    items.append(it)
+                    got += 1
+            log(f"ebay: {got} Inserate (RSS) für '{q}'")
         except (Blocked, ET.ParseError) as e:
             log(f"ebay rss: {e}")
-        if got:
-            log(f"ebay: RSS ok für '{q}'")
-            continue
-        # 2) HTML
-        if BeautifulSoup is None:
-            continue
-        try:
-            html = http.get(base)
-        except Blocked as e:
-            log(f"ebay html: {e}")
-            continue
-        soup = BeautifulSoup(html, "html.parser")
-        cards = soup.select("li.s-item, li.s-card, div.s-item")
-        for c in cards:
-            a = c.select_one("a.s-item__link, a[href*='/itm/']")
-            if not a:
-                continue
-            link = a.get("href", "")
-            m = re.search(r"/itm/(?:[^/]+/)?(\d{9,})", link)
-            if not m:
-                continue
-            title_el = c.select_one(".s-item__title, .s-card__title, [role=heading]")
-            title = title_el.get_text(" ", strip=True) if title_el else a.get_text(" ", strip=True)
-            if title.lower().startswith("shop on ebay"):
-                continue
-            price_el = c.select_one(".s-item__price, .s-card__price")
-            price_txt = price_el.get_text(" ", strip=True) if price_el else ""
-            all_txt = c.get_text(" ", strip=True)
-            lower = all_txt.lower()
-            if "gebot" in lower:
-                kind = "Auktion"
-            elif "sofort-kaufen" in lower or "sofort kaufen" in lower:
-                kind = "Sofort-Kaufen"
-            else:
-                kind = "eBay (Typ unklar)"
-            items.append(
-                {
-                    "id": item_id("ebay", m.group(1)),
-                    "source": "eBay",
-                    "title": title,
-                    "url": link.split("?")[0],
-                    "price_text": price_txt,
-                    "price": parse_price(price_txt),
-                    "negotiable": "preisvorschlag" in lower,
-                    "location": "",
-                    "text": all_txt,
-                    "is_wanted": False,
-                    "kind": kind,
-                }
-            )
-        log(f"ebay: {len(cards)} Karten (HTML) für '{q}'")
     return items
 
 
@@ -508,6 +522,7 @@ def run_once(cfg: dict, dry_run: bool, print_all: bool) -> int:
     if cfg["sources"]["page_watch"]["enabled"]:
         found += watch_pages(http, cfg)
 
+    log(f"SUMMARY ok={','.join(sorted(http.ok_hosts)) or '-'} blocked={','.join(sorted(http.blocked_hosts)) or '-'}")
     if http.ok == 0 and http.blocked > 0:
         log("ALLE Portale blockiert (Egress/Bot-Schutz). Exit 3.")
         return 3
