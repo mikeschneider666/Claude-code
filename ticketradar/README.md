@@ -47,7 +47,24 @@ Deshalb zwei Betriebsarten, die sich ergänzen:
 **Übersichtsseite (alle Treffer live, mit Kopiertext für den Verkäufer):**
 https://claude.ai/code/artifact/659fda24-43ab-4fed-bd4c-495beca0298a
 
-## Einrichtung lokal (5 Minuten)
+## Einrichtung lokal mit einem Befehl
+
+**Windows** (PowerShell öffnen, Befehl einfügen, Enter):
+```powershell
+irm https://raw.githubusercontent.com/mikeschneider666/Claude-code/refs/heads/claude/electric-call-boy-ticket-radar-hze1ul/ticketradar/install-windows.ps1 | iex
+```
+
+**Mac / Linux** (Terminal):
+```bash
+curl -fsSL https://raw.githubusercontent.com/mikeschneider666/Claude-code/refs/heads/claude/electric-call-boy-ticket-radar-hze1ul/ticketradar/install-mac.sh | bash
+```
+
+Der Installer lädt das Radar in den Ordner `Ticketradar` in deinem Benutzerverzeichnis, installiert Python
+(nur Windows, über winget) und die Abhängigkeiten, schickt einen Test-Push, macht einen Suchlauf und richtet
+den Zehn-Minuten-Takt ein. Vorher die ntfy-App installieren und das Topic abonnieren (siehe unten).
+Erneutes Ausführen aktualisiert das Radar und behält die bereits gemeldeten Angebote.
+
+## Einrichtung lokal von Hand (5 Minuten)
 
 ### 1. Push-App
 * **ntfy** installieren (iOS/Android, kostenlos): https://ntfy.sh
@@ -126,6 +143,7 @@ Tippen auf die Nachricht öffnet das Inserat direkt. Nachricht kopieren, bei Kle
 | `state/seen.json` | bereits gemeldete Angebote (damit nichts doppelt kommt) |
 | `state/radar.log` | Protokoll |
 | `ROUTINE.md` | Prompt und Datenmodell der stündlichen Cloud-Routine |
+| `install-windows.ps1` / `install-mac.sh` | Ein-Befehl-Installer |
 | `de.mikeschneider.ticketradar.plist` | launchd-Vorlage für den Mac |
 
 ## Bekannte Grenzen
